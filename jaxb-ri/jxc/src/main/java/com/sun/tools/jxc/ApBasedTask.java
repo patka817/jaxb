@@ -48,6 +48,7 @@ import org.apache.tools.ant.types.Commandline;
 
 import javax.annotation.processing.Processor;
 import javax.tools.DiagnosticCollector;
+import javax.tools.Diagnostic;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
@@ -113,7 +114,7 @@ public abstract class ApBasedTask extends Javac {
         public boolean execute() throws BuildException {
             try {
                 JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-                DiagnosticCollector diagnostics = new DiagnosticCollector();
+                DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
                 Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(compileList));
                 JavaCompiler.CompilationTask task = compiler.getTask(
@@ -124,7 +125,11 @@ public abstract class ApBasedTask extends Javac {
                         null,
                         compilationUnits);
                 task.setProcessors(Collections.singleton(getProcessor()));
-                return task.call();
+                boolean result = task.call();
+                for( Diagnostic<? extends JavaFileObject> d : diagnostics.getDiagnostics() ) {
+                    log(d.toString(),Project.MSG_ERR);
+                }
+                return result;
             } catch (BuildException e) {
                 throw e;
             } catch (Exception ex) {
